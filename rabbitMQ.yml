@@ -1,0 +1,69 @@
+- name: rabbitMQ
+  become: true
+  hosts: rabbitmq
+  tasks:
+  - name: install 
+    apt:
+      name:
+        - curl
+        - gnupg
+        - apt-transport-https
+        - rabbitmq-server
+        - net-tools
+        - python3-pip
+      state: present
+      update_cache: yes
+
+  - name: install pika
+    pip:
+      name: pika
+
+  - name: Add IP to /etc/hosts
+    ansible.builtin.lineinfile:
+      path: /etc/hosts
+      line: "{{ item }}"
+      create: yes
+    with_items:
+      - 51.250.91.212 fhmru3u68m7isjuu44gt
+      - 51.250.1.142 fhmrepq6r7bn9d1etus1
+
+  - name: start rabbitmq
+    ansible.builtin.service:
+      name: rabbitmq-server
+      state: started
+      enabled: yes
+
+  - name: add rabbitmq users admin
+    rabbitmq_user:
+      user: admin
+      password: admin
+      vhost: /
+      tags: administrator
+      configure_priv: .*
+      read_priv: .*
+      write_priv: .*
+      state: present
+
+  - name: enable rabbitmq plugins
+    rabbitmq_plugin:
+      names: rabbitmq_management
+      state: enabled
+
+  - name: one /var/lib/rabbitmq/.erlang.cookie
+    ansible.builtin.lineinfile:
+      path: /var/lib/rabbitmq/.erlang.cookie
+      regexp: '^[A-Z]'
+      insertbefore: BOF
+      line: "GDNHQGAKDGBUADJUVAWG"
+      state: present
+  - name: restart rabbitMQ
+    ansible.builtin.service:
+      name: rabbitmq-server
+      state: restarted
+
+  - name: comands
+    shell: |
+      rabbitmqctl restart
+      rabbitmqctl stop_app
+      rabbitmqctl join_cluster 'rabbit@fhmru3u68m7isjuu44gt'
+      rabbitmqctl start_app
